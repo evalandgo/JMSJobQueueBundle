@@ -8,6 +8,7 @@ use JMS\JobQueueBundle\Entity\Job;
 use JMS\JobQueueBundle\Entity\Repository\JobManager;
 use JMS\JobQueueBundle\View\JobFilter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -15,6 +16,16 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class JobController extends AbstractController
 {
+
+
+    protected  $jobManager;
+
+    public function __construct(JobManager $jobManager)
+    {
+        $this->jobManager=$jobManager;
+    }
+
+
     /**
      * @Route("/", name = "jms_jobs_overview")
      */
@@ -27,7 +38,7 @@ class JobController extends AbstractController
             ->where($qb->expr()->isNull('j.originalJob'))
             ->orderBy('j.id', 'desc');
 
-        $lastJobsWithError = $jobFilter->isDefaultPage() ? $this->getRepo()->findLastJobsWithError(5) : [];
+        $lastJobsWithError = $jobFilter->isDefaultPage() ? $this->jobManager->findLastJobsWithError(5) : [];
         foreach ($lastJobsWithError as $i => $job) {
             $qb->andWhere($qb->expr()->neq('j.id', '?'.$i));
             $qb->setParameter($i, $job->getId());
@@ -66,7 +77,7 @@ class JobController extends AbstractController
     /**
      * @Route("/{id}", name = "jms_jobs_details")
      */
-    public function detailsAction(Job $job)
+    public function detailsAction(Job $job,ParameterBagInterface $parameterBag)
     {
         $relatedEntities = array();
         foreach ($job->getRelatedEntities() as $entity) {
@@ -79,7 +90,7 @@ class JobController extends AbstractController
         }
 
         $statisticData = $statisticOptions = array();
-        if ($this->getParameter('jms_job_queue.statistics')) {
+        if ($parameterBag->get('jms_job_queue.statistics')) {
             $dataPerCharacteristic = array();
             foreach ($this->get('doctrine')->getManagerForClass(Job::class)->getConnection()->query("SELECT * FROM jms_job_statistics WHERE job_id = ".$job->getId()) as $row) {
                 $dataPerCharacteristic[$row['characteristic']][] = array(
@@ -118,7 +129,7 @@ class JobController extends AbstractController
         return $this->render('@JMSJobQueue/Job/details.html.twig', array(
             'job' => $job,
             'relatedEntities' => $relatedEntities,
-            'incomingDependencies' => $this->getRepo()->getIncomingDependencies($job),
+            'incomingDependencies' =>$this->jobManager->getIncomingDependencies($job),
             'statisticData' => $statisticData,
             'statisticOptions' => $statisticOptions,
         ));
