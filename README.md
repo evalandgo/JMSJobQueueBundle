@@ -11,3 +11,9 @@ Code License:
 
 Documentation License:
 [Resources/doc/LICENSE](https://github.com/schmittjoh/JMSJobQueueBundle/blob/master/Resources/doc/LICENSE)
+
+Updated dependencies : configure as follow
+
+    JMS\JobQueueBundle\Controller\JobController:
+        arguments:
+            $jobManager: "@jms_job_queue.job_manager"
